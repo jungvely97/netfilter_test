@@ -63,6 +63,7 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
     int payload;
     uint8_t *value;
     struct nfqnl_msg_packet_hdr *packet_hdr;
+    bool block = false;
 
     packet_hdr = nfq_get_msg_packet_hdr(nfa);
     id = ntohl(packet_hdr->packet_id);
@@ -71,24 +72,18 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
     IPH * ip = (IPH *)value;
     if ( ip->Protocol == 0x06){
         TCPH * tcp= (TCPH *)(value + (ip->IHL * 4));
-        if(ntohs(tcp->DstPort) == 80 || ntohs(tcp->SrcPort) == 80){
-            printf("block!\n");
-            return nfq_set_verdict(qh, id, NF_DROP, 0, NULL);
-        }
-        else{
-           printf("entering callback\n");
-           return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
-       }
+        if(ntohs(tcp->DstPort) == 80 || ntohs(tcp->SrcPort) == 80) block = true;
+    if (block) {
+           printf("block!\n");
+           return nfq_set_verdict(qh, id, NF_DROP, 0, NULL);
+    } else {
+            printf("entering callback\n");
+            return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
     }
-     else{
-        printf("entering callback\n");
-        return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
-    }
-}
+}}
 
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv){
     struct nfq_handle *h;
     struct nfq_q_handle *qh;
     struct nfnl_handle *nh;
